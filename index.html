@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Chris's Gym Log</title>
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#121212">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" id="touch-icon">
+  <script>
+    (function() {
+      var c = document.createElement('canvas');
+      c.width = c.height = 180;
+      var ctx = c.getContext('2d');
+      ctx.fillStyle = '#121212';
+      ctx.beginPath();
+      ctx.roundRect(0, 0, 180, 180, 36);
+      ctx.fill();
+      ctx.font = '120px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('\uD83C\uDFCB\uFE0F', 90, 96);
+      document.getElementById('touch-icon').href = c.toDataURL('image/png');
+    })();
+  </script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --bg: #121212;
+      --surface: #1e1e1e;
+      --surface2: #2a2a2a;
+      --primary: #bb86fc;
+      --primary-dim: #7c4dff;
+      --secondary: #03dac6;
+      --error: #cf6679;
+      --text: #e0e0e0;
+      --text-dim: #888;
+      --radius: 14px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      padding: 16px;
+      padding-bottom: 100px;
+    }
+
+    h1 { font-size: 1.6rem; margin-bottom: 4px; }
+    h2 { font-size: 1.2rem; color: var(--text-dim); font-weight: 400; margin-bottom: 20px; }
+    h3 { font-size: 1.1rem; margin-bottom: 12px; color: var(--primary); }
+
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .workout-badge {
+      display: inline-block;
+      background: var(--primary-dim);
+      color: #fff;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .workout-name {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .workout-desc {
+      color: var(--text-dim);
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 18px;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 10px;
+      transition: transform 0.1s, opacity 0.15s;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .btn:active { transform: scale(0.97); opacity: 0.85; }
+
+    .btn-primary { background: var(--primary); color: #121212; }
+    .btn-secondary { background: var(--surface2); color: var(--text); }
+    .btn-accent { background: var(--secondary); color: #121212; }
+    .btn-danger { background: var(--error); color: #121212; }
+    .btn-small {
+      display: inline-block;
+      width: auto;
+      padding: 10px 20px;
+      font-size: 0.95rem;
+    }
+
+    .btn-group { display: flex; gap: 10px; }
+    .btn-group .btn { flex: 1; }
+
+    input, textarea {
+      width: 100%;
+      padding: 16px;
+      background: var(--surface2);
+      border: 2px solid transparent;
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 1rem;
+      font-family: inherit;
+      margin-bottom: 10px;
+      transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    input::placeholder, textarea::placeholder { color: var(--text-dim); }
+    textarea { resize: vertical; min-height: 80px; }
+
+    .log-entry {
+      background: var(--surface2);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .log-entry .details { flex: 1; }
+    .log-entry .details .label { font-weight: 600; font-size: 1rem; }
+    .log-entry .details .meta { color: var(--text-dim); font-size: 0.85rem; margin-top: 2px; }
+    .log-entry .delete-btn {
+      background: none;
+      border: none;
+      color: var(--error);
+      font-size: 1.3rem;
+      cursor: pointer;
+      padding: 8px;
+      min-width: 44px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 100;
+      padding: 16px;
+      overflow-y: auto;
+    }
+    .modal-overlay.active { display: flex; align-items: flex-start; justify-content: center; padding-top: 60px; }
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 24px;
+      width: 100%;
+      max-width: 400px;
+    }
+    .modal h3 { margin-bottom: 16px; }
+
+    .routine-option {
+      padding: 18px;
+      background: var(--surface2);
+      border-radius: var(--radius);
+      margin-bottom: 10px;
+      cursor: pointer;
+      font-size: 1.05rem;
+      font-weight: 500;
+      transition: background 0.15s;
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+    }
+    .routine-option:active { background: var(--primary-dim); }
+
+    .empty-state {
+      text-align: center;
+      padding: 30px;
+      color: var(--text-dim);
+    }
+
+    .tab-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--surface2);
+      display: flex;
+      padding: 8px 0;
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
+      z-index: 50;
+    }
+    .tab {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      padding: 8px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .tab.active { color: var(--primary); }
+    .tab svg { width: 24px; height: 24px; }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .history-date {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      margin: 16px 0 8px;
+      font-weight: 600;
+    }
+
+    .weekend-toggle {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .weekend-toggle .btn {
+      flex: 1;
+      opacity: 0.5;
+    }
+    .weekend-toggle .btn.selected { opacity: 1; }
+
+    .exercise-chip {
+      display: inline-block;
+      background: var(--primary-dim);
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      margin: 3px 4px 3px 0;
+    }
+
+    .workout-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .workout-pick {
+      background: var(--surface2);
+      border: none;
+      border-radius: var(--radius);
+      color: var(--text);
+      padding: 20px 16px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.15s;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .workout-pick:active { transform: scale(0.95); opacity: 0.85; }
+
+    .today-item {
+      background: var(--surface2);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 500;
+    }
+    .today-item:last-child { margin-bottom: 0; }
+    .today-item .check { color: var(--secondary); font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<!-- ==================== DASHBOARD ==================== -->
+<div id="dashboard" class="section active">
+  <h1>Chris's Gym Log</h1>
+  <h2><span id="greeting"></span> · <span id="date-display"></span></h2>
+
+  <div id="today-summary"></div>
+
+  <div class="card">
+    <h3>Start a Workout</h3>
+    <div class="workout-grid">
+      <button class="workout-pick" onclick="startWorkout('Run')">Run</button>
+      <button class="workout-pick" onclick="startWorkout('Bike')">Bike</button>
+      <button class="workout-pick" onclick="startWorkout('Yoga')">Yoga</button>
+      <button class="workout-pick" onclick="startWorkout('Weights')">Weights</button>
+      <button class="workout-pick" onclick="startWorkout('Stretch')">Stretch</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== LOG WORKOUT ==================== -->
+<div id="log-section" class="section">
+  <h1 id="log-title">Log Workout</h1>
+  <h2 id="log-subtitle"></h2>
+
+  <div class="card" id="log-form-area">
+    <!-- Dynamic form rendered by JS -->
+  </div>
+
+  <div id="session-entries"></div>
+
+  <button class="btn btn-accent" onclick="finishWorkout()" style="margin-top:16px">Finish Workout</button>
+</div>
+
+<!-- ==================== HISTORY ==================== -->
+<div id="history-section" class="section">
+  <h1>History</h1>
+  <h2>Past workouts</h2>
+  <div id="history-list"></div>
+</div>
+
+<!-- ==================== LIFTING EXERCISES MODAL ==================== -->
+<div class="modal-overlay" id="exercises-modal">
+  <div class="modal">
+    <h3>Add Exercises</h3>
+    <textarea id="exercises-input" placeholder="Type exercises, one per line&#10;e.g.&#10;Bench Press&#10;Squats&#10;Deadlift"></textarea>
+    <button class="btn btn-primary" onclick="saveExercises()">Save</button>
+    <button class="btn btn-secondary" onclick="closeExercisesModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- ==================== TAB BAR ==================== -->
+<nav class="tab-bar">
+  <button class="tab active" onclick="switchTab('dashboard')" id="tab-dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg>
+    Today
+  </button>
+  <button class="tab" onclick="switchTab('log-section')" id="tab-log-section">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    Log
+  </button>
+  <button class="tab" onclick="switchTab('history-section')" id="tab-history-section">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+    History
+  </button>
+</nav>
+
+<script>
+// ========== STATE ==========
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const SHORT_DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+let currentWorkout = null;
+let sessionEntries = [];
+let liftingExercises = [];
+
+// ========== STORAGE HELPERS ==========
+function load(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
+  catch { return fallback; }
+}
+function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+// ========== INIT ==========
+function init() {
+  const now = new Date();
+  const dayName = DAYS[now.getDay()];
+
+  document.getElementById('greeting').textContent = getGreeting();
+  document.getElementById('date-display').textContent =
+    `${dayName}, ${now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`;
+
+  liftingExercises = load('liftingExercises', []);
+  renderDashboard();
+}
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function getTodayWorkouts() {
+  const history = load('workoutHistory', []);
+  const today = new Date().toDateString();
+  return history.filter(w => new Date(w.date).toDateString() === today);
+}
+
+// ========== DASHBOARD RENDERING ==========
+function renderDashboard() {
+  const today = getTodayWorkouts();
+  const summary = document.getElementById('today-summary');
+  if (today.length) {
+    summary.innerHTML = '<div class="card"><h3>Today</h3>' +
+      today.map(w => {
+        const count = w.entries.length;
+        return `<div class="today-item"><span class="check">&#10003;</span><span>${esc(w.workout)}</span><span style="color:var(--text-dim);margin-left:auto;font-size:0.85rem">${count} ${count === 1 ? 'entry' : 'entries'}</span></div>`;
+      }).join('') + '</div>';
+  } else {
+    summary.innerHTML = '';
+  }
+}
+
+// ========== EXERCISES MODAL ==========
+function openExercisesModal() {
+  document.getElementById('exercises-input').value = liftingExercises.join('\n');
+  document.getElementById('exercises-modal').classList.add('active');
+}
+function closeExercisesModal() {
+  document.getElementById('exercises-modal').classList.remove('active');
+}
+function saveExercises() {
+  const raw = document.getElementById('exercises-input').value;
+  liftingExercises = raw.split('\n').map(s => s.trim()).filter(Boolean);
+  save('liftingExercises', liftingExercises);
+  renderDashboard();
+  closeExercisesModal();
+}
+
+// ========== START / LOG WORKOUT ==========
+function startWorkout(type) {
+  currentWorkout = type;
+  sessionEntries = [];
+  switchTab('log-section');
+  document.getElementById('log-title').textContent = type;
+  document.getElementById('log-subtitle').textContent = 'Log your sets and progress';
+  renderLogForm();
+  renderSessionEntries();
+}
+
+function renderLogForm() {
+  const area = document.getElementById('log-form-area');
+  const w = currentWorkout;
+
+  if (w === 'Run' || w === 'Bike') {
+    area.innerHTML = `
+      <h3>Log ${w === 'Run' ? 'Run' : 'Ride'}</h3>
+      <input type="text" id="log-distance" placeholder="Distance (e.g. 5 miles)" inputmode="decimal">
+      <input type="text" id="log-duration" placeholder="Duration (e.g. 35 min)" inputmode="text">
+      <input type="number" id="log-hr" placeholder="Avg heart rate (BPM)" inputmode="numeric">
+      <input type="text" id="log-notes" placeholder="Notes (optional)">
+      <button class="btn btn-accent" onclick="addCardioEntry()">Add Entry</button>`;
+  } else if (w === 'Weights') {
+    let html = '';
+    if (liftingExercises.length) {
+      let exerciseOptions = liftingExercises.map(e =>
+        `<div class="routine-option" onclick="selectExerciseForLog('${esc(e)}')" style="padding:14px;margin-bottom:6px">${esc(e)}</div>`
+      ).join('');
+      html = `
+        <h3>Pick Exercise</h3>
+        ${exerciseOptions}
+        <div style="margin-top:10px">
+          <input type="text" id="log-custom-exercise" placeholder="Or type an exercise">
+        </div>
+        <div id="set-form" style="display:none; margin-top:14px">
+          <div style="font-weight:600;margin-bottom:8px" id="set-exercise-name"></div>
+          <div class="btn-group">
+            <input type="number" id="log-reps" placeholder="Reps" inputmode="numeric" style="flex:1">
+            <input type="number" id="log-weight" placeholder="Weight (lbs)" inputmode="decimal" style="flex:1">
+          </div>
+          <input type="text" id="log-set-notes" placeholder="Notes (optional)" style="margin-top:10px">
+          <button class="btn btn-accent" onclick="addLiftEntry()" style="margin-top:6px">Add Set</button>
+        </div>`;
+    } else {
+      html = `
+        <h3>Log Set</h3>
+        <input type="text" id="log-exercise-name" placeholder="Exercise name">
+        <div class="btn-group">
+          <input type="number" id="log-reps" placeholder="Reps" inputmode="numeric" style="flex:1">
+          <input type="number" id="log-weight" placeholder="Weight (lbs)" inputmode="decimal" style="flex:1">
+        </div>
+        <input type="text" id="log-set-notes" placeholder="Notes (optional)">
+        <button class="btn btn-accent" onclick="addGenericEntry()">Add Entry</button>`;
+    }
+    html += `<button class="btn btn-secondary btn-small" onclick="openExercisesModal()" style="margin-top:10px">${liftingExercises.length ? 'Edit' : 'Add'} Exercises</button>`;
+    area.innerHTML = html;
+  } else if (w === 'Yoga' || w === 'Stretch') {
+    area.innerHTML = `
+      <h3>Log ${w}</h3>
+      <input type="text" id="log-duration" placeholder="Duration (e.g. 30 min)" inputmode="text">
+      <input type="text" id="log-notes" placeholder="Notes (optional)">
+      <button class="btn btn-accent" onclick="addCardioEntry()">Add Entry</button>`;
+  } else {
+    area.innerHTML = `
+      <h3>Log Activity</h3>
+      <input type="text" id="log-exercise-name" placeholder="Exercise name">
+      <div class="btn-group">
+        <input type="number" id="log-reps" placeholder="Reps" inputmode="numeric" style="flex:1">
+        <input type="number" id="log-weight" placeholder="Weight" inputmode="decimal" style="flex:1">
+      </div>
+      <input type="text" id="log-distance" placeholder="Distance (optional)">
+      <input type="text" id="log-set-notes" placeholder="Notes (optional)">
+      <button class="btn btn-accent" onclick="addGenericEntry()">Add Entry</button>`;
+  }
+}
+
+let selectedExercise = '';
+function selectExerciseForLog(name) {
+  selectedExercise = name;
+  document.getElementById('set-form').style.display = 'block';
+  document.getElementById('set-exercise-name').textContent = name;
+  document.getElementById('log-reps').focus();
+}
+
+function addCardioEntry() {
+  const distEl = document.getElementById('log-distance');
+  const hrEl = document.getElementById('log-hr');
+  const distance = distEl ? distEl.value.trim() : '';
+  const duration = document.getElementById('log-duration').value.trim();
+  const hr = hrEl ? hrEl.value.trim() : '';
+  const notes = document.getElementById('log-notes').value.trim();
+  if (!distance && !duration) return;
+  sessionEntries.push({ type: 'cardio', distance, duration, hr, notes, time: Date.now() });
+  if (distEl) distEl.value = '';
+  document.getElementById('log-duration').value = '';
+  if (hrEl) hrEl.value = '';
+  document.getElementById('log-notes').value = '';
+  renderSessionEntries();
+}
+
+function addLiftEntry() {
+  const exercise = selectedExercise || document.getElementById('log-custom-exercise')?.value.trim();
+  const reps = document.getElementById('log-reps').value.trim();
+  const weight = document.getElementById('log-weight').value.trim();
+  const notes = document.getElementById('log-set-notes').value.trim();
+  if (!exercise) return;
+  sessionEntries.push({ type: 'lift', exercise, reps, weight, notes, time: Date.now() });
+  document.getElementById('log-reps').value = '';
+  document.getElementById('log-weight').value = '';
+  document.getElementById('log-set-notes').value = '';
+  renderSessionEntries();
+}
+
+function addGenericEntry() {
+  const exercise = document.getElementById('log-exercise-name').value.trim();
+  const reps = document.getElementById('log-reps').value.trim();
+  const weight = document.getElementById('log-weight').value.trim();
+  const distance = document.getElementById('log-distance')?.value.trim() || '';
+  const notes = document.getElementById('log-set-notes').value.trim();
+  if (!exercise) return;
+  sessionEntries.push({ type: 'generic', exercise, reps, weight, distance, notes, time: Date.now() });
+  document.getElementById('log-reps').value = '';
+  document.getElementById('log-weight').value = '';
+  if (document.getElementById('log-distance')) document.getElementById('log-distance').value = '';
+  document.getElementById('log-set-notes').value = '';
+  renderSessionEntries();
+}
+
+function renderSessionEntries() {
+  const container = document.getElementById('session-entries');
+  if (!sessionEntries.length) {
+    container.innerHTML = '<div class="empty-state">No entries yet. Log your sets above.</div>';
+    return;
+  }
+  container.innerHTML = sessionEntries.map((e, i) => {
+    let label = '', meta = '';
+    if (e.type === 'cardio') {
+      label = [e.distance, e.duration].filter(Boolean).join(' — ');
+      const metaParts = [];
+      if (e.hr) metaParts.push(`${e.hr} BPM`);
+      if (e.notes) metaParts.push(e.notes);
+      meta = metaParts.join(' — ');
+    } else {
+      label = e.exercise || '';
+      const parts = [];
+      if (e.reps) parts.push(`${e.reps} reps`);
+      if (e.weight) parts.push(`${e.weight} lbs`);
+      if (e.distance) parts.push(e.distance);
+      meta = parts.join(' · ') + (e.notes ? ` — ${e.notes}` : '');
+    }
+    return `<div class="log-entry">
+      <div class="details">
+        <div class="label">${esc(label)}</div>
+        <div class="meta">${esc(meta)}</div>
+      </div>
+      <button class="delete-btn" onclick="removeEntry(${i})">×</button>
+    </div>`;
+  }).join('');
+}
+
+function removeEntry(i) {
+  sessionEntries.splice(i, 1);
+  renderSessionEntries();
+}
+
+// ========== FINISH & SAVE ==========
+function finishWorkout() {
+  if (!sessionEntries.length) {
+    if (!confirm('No entries logged. Finish anyway?')) return;
+  }
+  const history = load('workoutHistory', []);
+  history.unshift({
+    workout: currentWorkout,
+    date: new Date().toISOString(),
+    entries: [...sessionEntries],
+  });
+  save('workoutHistory', history);
+
+  sessionEntries = [];
+  switchTab('dashboard');
+  init();
+}
+
+// ========== HISTORY ==========
+function renderHistory() {
+  const history = load('workoutHistory', []);
+  const container = document.getElementById('history-list');
+
+  if (!history.length) {
+    container.innerHTML = '<div class="empty-state">No workouts logged yet.</div>';
+    return;
+  }
+
+  let html = '';
+  let lastDate = '';
+  history.forEach((w, wi) => {
+    const d = new Date(w.date);
+    const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    if (dateStr !== lastDate) {
+      html += `<div class="history-date">${dateStr}</div>`;
+      lastDate = dateStr;
+    }
+    html += `<div class="card" style="padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:700">${esc(w.workout)}</div>
+          <div style="color:var(--text-dim);font-size:0.85rem">${w.entries.length} entries</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-secondary btn-small" onclick="toggleHistoryDetail(${wi})" style="margin:0;padding:8px 14px;font-size:0.85rem">Details</button>
+          <button class="delete-btn" onclick="deleteHistory(${wi})" style="font-size:1.2rem">×</button>
+        </div>
+      </div>
+      <div id="hist-detail-${wi}" style="display:none;margin-top:10px">
+        ${w.entries.map(e => {
+          if (e.type === 'cardio') {
+            const cMeta = [e.hr ? e.hr + ' BPM' : '', e.notes || ''].filter(Boolean).join(' — ');
+            return `<div class="log-entry"><div class="details">
+              <div class="label">${esc([e.distance, e.duration].filter(Boolean).join(' — '))}</div>
+              <div class="meta">${esc(cMeta)}</div>
+            </div></div>`;
+          }
+          const parts = [];
+          if (e.reps) parts.push(`${e.reps} reps`);
+          if (e.weight) parts.push(`${e.weight} lbs`);
+          if (e.distance) parts.push(e.distance);
+          return `<div class="log-entry"><div class="details">
+            <div class="label">${esc(e.exercise || '')}</div>
+            <div class="meta">${esc(parts.join(' · '))}${e.notes ? ' — ' + esc(e.notes) : ''}</div>
+          </div></div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function toggleHistoryDetail(i) {
+  const el = document.getElementById(`hist-detail-${i}`);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function deleteHistory(i) {
+  if (!confirm('Delete this workout?')) return;
+  const history = load('workoutHistory', []);
+  history.splice(i, 1);
+  save('workoutHistory', history);
+  renderHistory();
+}
+
+// ========== NAV ==========
+function switchTab(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+  if (id === 'history-section') renderHistory();
+}
+
+// ========== UTIL ==========
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ========== SERVICE WORKER ==========
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
+}
+
+// ========== GO ==========
+init();
+</script>
+
+</body>
+</html>
