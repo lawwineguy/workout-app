@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Chris's Gym Log</title>
+  <title>Gym Log</title>
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#121212">
   <link rel="manifest" href="./manifest.json">
@@ -335,7 +335,7 @@
 
 <!-- ==================== DASHBOARD ==================== -->
 <div id="dashboard" class="section active">
-  <h1>Chris's Gym Log</h1>
+  <h1 id="app-title" onclick="editName()" style="cursor:pointer"></h1>
   <h2><span id="greeting"></span> · <span id="date-display"></span></h2>
 
   <div id="today-summary"></div>
@@ -421,12 +421,29 @@ function init() {
   const now = new Date();
   const dayName = DAYS[now.getDay()];
 
+  updateAppTitle();
   document.getElementById('greeting').textContent = getGreeting();
   document.getElementById('date-display').textContent =
     `${dayName}, ${now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`;
 
   liftingExercises = load('liftingExercises', []);
   renderDashboard();
+}
+
+function updateAppTitle() {
+  const name = load('userName', 'Chris');
+  const title = name + '\u2019s Gym Log';
+  document.getElementById('app-title').textContent = title;
+  document.title = title;
+}
+
+function editName() {
+  const current = load('userName', 'Chris');
+  const name = prompt('Enter your name:', current);
+  if (name !== null && name.trim()) {
+    save('userName', name.trim());
+    updateAppTitle();
+  }
 }
 
 function getGreeting() {
