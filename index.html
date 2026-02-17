@@ -563,6 +563,7 @@ function renderLogForm() {
         <div id="set-form" style="display:none; margin-top:14px">
           <div style="font-weight:600;margin-bottom:8px" id="set-exercise-name"></div>
           <div class="btn-group">
+            <input type="number" id="log-sets" placeholder="Sets" inputmode="numeric" style="flex:1">
             <input type="number" id="log-reps" placeholder="Reps" inputmode="numeric" style="flex:1">
             <input type="number" id="log-weight" placeholder="Weight (lbs)" inputmode="decimal" style="flex:1">
           </div>
@@ -575,6 +576,7 @@ function renderLogForm() {
         ${datePicker}
         <input type="text" id="log-exercise-name" placeholder="Exercise name">
         <div class="btn-group">
+          <input type="number" id="log-sets" placeholder="Sets" inputmode="numeric" style="flex:1">
           <input type="number" id="log-reps" placeholder="Reps" inputmode="numeric" style="flex:1">
           <input type="number" id="log-weight" placeholder="Weight (lbs)" inputmode="decimal" style="flex:1">
         </div>
@@ -596,6 +598,7 @@ function renderLogForm() {
       ${datePicker}
       <input type="text" id="log-exercise-name" placeholder="Exercise name">
       <div class="btn-group">
+        <input type="number" id="log-sets" placeholder="Sets" inputmode="numeric" style="flex:1">
         <input type="number" id="log-reps" placeholder="Reps" inputmode="numeric" style="flex:1">
         <input type="number" id="log-weight" placeholder="Weight" inputmode="decimal" style="flex:1">
       </div>
@@ -632,11 +635,13 @@ function addCardioEntry() {
 
 function addLiftEntry() {
   const exercise = selectedExercise || document.getElementById('log-custom-exercise')?.value.trim();
+  const sets = document.getElementById('log-sets').value.trim();
   const reps = document.getElementById('log-reps').value.trim();
   const weight = document.getElementById('log-weight').value.trim();
   const notes = document.getElementById('log-set-notes').value.trim();
   if (!exercise) return;
-  sessionEntries.push({ type: 'lift', exercise, reps, weight, notes, time: Date.now() });
+  sessionEntries.push({ type: 'lift', exercise, sets, reps, weight, notes, time: Date.now() });
+  document.getElementById('log-sets').value = '';
   document.getElementById('log-reps').value = '';
   document.getElementById('log-weight').value = '';
   document.getElementById('log-set-notes').value = '';
@@ -645,12 +650,14 @@ function addLiftEntry() {
 
 function addGenericEntry() {
   const exercise = document.getElementById('log-exercise-name').value.trim();
+  const sets = document.getElementById('log-sets')?.value.trim() || '';
   const reps = document.getElementById('log-reps').value.trim();
   const weight = document.getElementById('log-weight').value.trim();
   const distance = document.getElementById('log-distance')?.value.trim() || '';
   const notes = document.getElementById('log-set-notes').value.trim();
   if (!exercise) return;
-  sessionEntries.push({ type: 'generic', exercise, reps, weight, distance, notes, time: Date.now() });
+  sessionEntries.push({ type: 'generic', exercise, sets, reps, weight, distance, notes, time: Date.now() });
+  if (document.getElementById('log-sets')) document.getElementById('log-sets').value = '';
   document.getElementById('log-reps').value = '';
   document.getElementById('log-weight').value = '';
   if (document.getElementById('log-distance')) document.getElementById('log-distance').value = '';
@@ -672,6 +679,7 @@ function renderSessionEntries() {
     } else {
       labelHtml = esc(e.exercise || '');
       const parts = [];
+      if (e.sets) parts.push(`${e.sets} sets`);
       if (e.reps) parts.push(`${e.reps} reps`);
       if (e.weight) parts.push(`${e.weight} lbs`);
       if (e.distance) parts.push(e.distance);
@@ -753,6 +761,7 @@ function renderHistory() {
             </div></div>`;
           }
           const parts = [];
+          if (e.sets) parts.push(`${e.sets} sets`);
           if (e.reps) parts.push(`${e.reps} reps`);
           if (e.weight) parts.push(`${e.weight} lbs`);
           if (e.distance) parts.push(e.distance);
