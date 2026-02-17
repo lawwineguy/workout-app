@@ -134,6 +134,37 @@
     input::placeholder, textarea::placeholder { color: var(--text-dim); }
     textarea { resize: vertical; min-height: 80px; }
 
+    .input-wrap {
+      position: relative;
+      margin-bottom: 10px;
+    }
+    .input-wrap input {
+      margin-bottom: 0;
+      padding-right: 44px;
+      width: 100%;
+    }
+    .input-clear {
+      display: none;
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 1.3rem;
+      cursor: pointer;
+      min-width: 44px;
+      min-height: 44px;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .input-wrap:focus-within .input-clear {
+      display: flex;
+    }
+
     .log-entry {
       background: var(--surface2);
       border-radius: 10px;
@@ -572,6 +603,7 @@ function renderLogForm() {
       <input type="text" id="log-set-notes" placeholder="Notes (optional)">
       <button class="btn btn-accent" onclick="addGenericEntry()">Add Entry</button>`;
   }
+  initClearButtons();
 }
 
 let selectedExercise = '';
@@ -755,6 +787,36 @@ function switchTab(id) {
   document.getElementById(id).classList.add('active');
   document.getElementById('tab-' + id).classList.add('active');
   if (id === 'history-section') renderHistory();
+}
+
+function initClearButtons() {
+  const area = document.getElementById('log-form-area');
+  if (!area) return;
+  area.querySelectorAll('input:not([type="date"])').forEach(input => {
+    if (input.parentElement.classList.contains('input-wrap')) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'input-wrap';
+    if (input.style.flex) {
+      wrap.style.flex = input.style.flex;
+      input.style.flex = '';
+    }
+    if (input.style.marginTop) {
+      wrap.style.marginTop = input.style.marginTop;
+      input.style.marginTop = '';
+    }
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'input-clear';
+    btn.textContent = '\u00d7';
+    btn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      input.value = '';
+      input.focus();
+    });
+    wrap.appendChild(btn);
+  });
 }
 
 // ========== UTIL ==========
