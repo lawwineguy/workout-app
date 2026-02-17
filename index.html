@@ -303,6 +303,31 @@
       flex: 1;
       margin-bottom: 0;
       color-scheme: dark;
+      transition: border-color 0.3s;
+    }
+    .date-picker-row input[type="date"].past-date {
+      border-color: var(--primary-dim);
+    }
+
+    .date-shortcuts {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .date-shortcut {
+      background: var(--surface2);
+      border: none;
+      border-radius: 20px;
+      color: var(--text-dim);
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .date-shortcut.active {
+      background: var(--primary-dim);
+      color: #fff;
     }
   </style>
 </head>
@@ -381,6 +406,7 @@ const SHORT_DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 let currentWorkout = null;
 let sessionEntries = [];
+let sessionDate = null;
 let liftingExercises = [];
 
 // ========== STORAGE HELPERS ==========
@@ -451,6 +477,7 @@ function saveExercises() {
 function startWorkout(type) {
   currentWorkout = type;
   sessionEntries = [];
+  sessionDate = todayDateStr();
   switchTab('log-section');
   document.getElementById('log-title').textContent = type;
   document.getElementById('log-subtitle').textContent = 'Log your sets and progress';
@@ -621,8 +648,7 @@ function finishWorkout() {
   if (!sessionEntries.length) {
     if (!confirm('No entries logged. Finish anyway?')) return;
   }
-  const dateInput = document.getElementById('log-date');
-  const selectedDate = dateInput ? dateInput.value : todayDateStr();
+  const selectedDate = sessionDate || todayDateStr();
   const workoutDate = new Date(selectedDate + 'T12:00:00');
 
   const history = load('workoutHistory', []);
@@ -726,12 +752,52 @@ function todayDateStr() {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
+function yesterdayDateStr() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
 function datePickerHTML() {
   const today = todayDateStr();
+  const dateVal = sessionDate || today;
+  const isPast = dateVal !== today;
+  const isYesterday = dateVal === yesterdayDateStr();
   return `<div class="date-picker-row">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-    <input type="date" id="log-date" value="${today}" max="${today}">
+    <input type="date" id="log-date" value="${dateVal}" max="${today}" onchange="onDateChange(this)"${isPast ? ' class="past-date"' : ''}>
+  </div>
+  <div class="date-shortcuts">
+    <button type="button" class="date-shortcut${!isPast ? ' active' : ''}" onclick="setLogDate(todayDateStr())">Today</button>
+    <button type="button" class="date-shortcut${isYesterday ? ' active' : ''}" onclick="setLogDate(yesterdayDateStr())">Yesterday</button>
   </div>`;
+}
+
+function onDateChange(input) {
+  sessionDate = input.value;
+  updateDateHighlight();
+}
+
+function setLogDate(dateStr) {
+  sessionDate = dateStr;
+  const input = document.getElementById('log-date');
+  if (input) input.value = dateStr;
+  updateDateHighlight();
+}
+
+function updateDateHighlight() {
+  const input = document.getElementById('log-date');
+  if (!input) return;
+  const today = todayDateStr();
+  const isPast = sessionDate !== today;
+  input.classList.toggle('past-date', isPast);
+  const btns = document.querySelectorAll('.date-shortcut');
+  btns.forEach(btn => btn.classList.remove('active'));
+  if (!isPast) {
+    btns[0]?.classList.add('active');
+  } else if (sessionDate === yesterdayDateStr()) {
+    btns[1]?.classList.add('active');
+  }
 }
 
 function formatCardioSummary(entry, workoutType) {
