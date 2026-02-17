@@ -291,6 +291,19 @@
     }
     .today-item:last-child { margin-bottom: 0; }
     .today-item .check { color: var(--secondary); font-weight: 700; }
+
+    .date-picker-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .date-picker-row svg { color: var(--primary); flex-shrink: 0; }
+    .date-picker-row input[type="date"] {
+      flex: 1;
+      margin-bottom: 0;
+      color-scheme: dark;
+    }
   </style>
 </head>
 <body>
@@ -448,10 +461,12 @@ function startWorkout(type) {
 function renderLogForm() {
   const area = document.getElementById('log-form-area');
   const w = currentWorkout;
+  const datePicker = datePickerHTML();
 
   if (w === 'Run' || w === 'Bike') {
     area.innerHTML = `
       <h3>Log ${w === 'Run' ? 'Run' : 'Ride'}</h3>
+      ${datePicker}
       <input type="text" id="log-distance" placeholder="Distance (e.g. 5 miles)" inputmode="decimal">
       <input type="text" id="log-duration" placeholder="Duration (e.g. 35 min)" inputmode="text">
       <input type="number" id="log-hr" placeholder="Avg heart rate (BPM)" inputmode="numeric">
@@ -465,6 +480,7 @@ function renderLogForm() {
       ).join('');
       html = `
         <h3>Pick Exercise</h3>
+        ${datePicker}
         ${exerciseOptions}
         <div style="margin-top:10px">
           <input type="text" id="log-custom-exercise" placeholder="Or type an exercise">
@@ -481,6 +497,7 @@ function renderLogForm() {
     } else {
       html = `
         <h3>Log Set</h3>
+        ${datePicker}
         <input type="text" id="log-exercise-name" placeholder="Exercise name">
         <div class="btn-group">
           <input type="number" id="log-reps" placeholder="Reps" inputmode="numeric" style="flex:1">
@@ -494,12 +511,14 @@ function renderLogForm() {
   } else if (w === 'Yoga' || w === 'Stretch') {
     area.innerHTML = `
       <h3>Log ${w}</h3>
+      ${datePicker}
       <input type="text" id="log-duration" placeholder="Duration (e.g. 30 min)" inputmode="text">
       <input type="text" id="log-notes" placeholder="Notes (optional)">
       <button class="btn btn-accent" onclick="addCardioEntry()">Add Entry</button>`;
   } else {
     area.innerHTML = `
       <h3>Log Activity</h3>
+      ${datePicker}
       <input type="text" id="log-exercise-name" placeholder="Exercise name">
       <div class="btn-group">
         <input type="number" id="log-reps" placeholder="Reps" inputmode="numeric" style="flex:1">
@@ -602,10 +621,14 @@ function finishWorkout() {
   if (!sessionEntries.length) {
     if (!confirm('No entries logged. Finish anyway?')) return;
   }
+  const dateInput = document.getElementById('log-date');
+  const selectedDate = dateInput ? dateInput.value : todayDateStr();
+  const workoutDate = new Date(selectedDate + 'T12:00:00');
+
   const history = load('workoutHistory', []);
   history.unshift({
     workout: currentWorkout,
-    date: new Date().toISOString(),
+    date: workoutDate.toISOString(),
     entries: [...sessionEntries],
   });
   save('workoutHistory', history);
@@ -696,6 +719,19 @@ function esc(s) {
   const d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
+}
+
+function todayDateStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function datePickerHTML() {
+  const today = todayDateStr();
+  return `<div class="date-picker-row">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+    <input type="date" id="log-date" value="${today}" max="${today}">
+  </div>`;
 }
 
 function formatCardioSummary(entry, workoutType) {
