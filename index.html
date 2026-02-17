@@ -570,25 +570,22 @@ function renderSessionEntries() {
     return;
   }
   container.innerHTML = sessionEntries.map((e, i) => {
-    let label = '', meta = '';
+    let labelHtml = '', metaHtml = '';
     if (e.type === 'cardio') {
-      label = [e.distance, e.duration].filter(Boolean).join(' — ');
-      const metaParts = [];
-      if (e.hr) metaParts.push(`${e.hr} BPM`);
-      if (e.notes) metaParts.push(e.notes);
-      meta = metaParts.join(' — ');
+      labelHtml = formatCardioSummary(e, currentWorkout);
+      metaHtml = e.notes ? esc(e.notes) : '';
     } else {
-      label = e.exercise || '';
+      labelHtml = esc(e.exercise || '');
       const parts = [];
       if (e.reps) parts.push(`${e.reps} reps`);
       if (e.weight) parts.push(`${e.weight} lbs`);
       if (e.distance) parts.push(e.distance);
-      meta = parts.join(' · ') + (e.notes ? ` — ${e.notes}` : '');
+      metaHtml = esc(parts.join(' · ') + (e.notes ? ` — ${e.notes}` : ''));
     }
     return `<div class="log-entry">
       <div class="details">
-        <div class="label">${esc(label)}</div>
-        <div class="meta">${esc(meta)}</div>
+        <div class="label">${labelHtml}</div>
+        ${metaHtml ? `<div class="meta">${metaHtml}</div>` : ''}
       </div>
       <button class="delete-btn" onclick="removeEntry(${i})">×</button>
     </div>`;
@@ -651,10 +648,10 @@ function renderHistory() {
       <div id="hist-detail-${wi}" style="display:none;margin-top:10px">
         ${w.entries.map(e => {
           if (e.type === 'cardio') {
-            const cMeta = [e.hr ? e.hr + ' BPM' : '', e.notes || ''].filter(Boolean).join(' — ');
+            const summaryHtml = formatCardioSummary(e, w.workout);
             return `<div class="log-entry"><div class="details">
-              <div class="label">${esc([e.distance, e.duration].filter(Boolean).join(' — '))}</div>
-              <div class="meta">${esc(cMeta)}</div>
+              <div class="label">${summaryHtml}</div>
+              ${e.notes ? `<div class="meta">${esc(e.notes)}</div>` : ''}
             </div></div>`;
           }
           const parts = [];
@@ -699,6 +696,36 @@ function esc(s) {
   const d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
+}
+
+function formatCardioSummary(entry, workoutType) {
+  const parts = [];
+
+  if (entry.distance) {
+    const num = entry.distance.match(/[\d.]+/);
+    const activityLabel = workoutType.toLowerCase();
+    if (num) {
+      parts.push(`<b>${esc(num[0])}</b> mile ${esc(activityLabel)}`);
+    } else {
+      parts.push(`${esc(entry.distance)} ${esc(activityLabel)}`);
+    }
+  }
+
+  if (entry.duration) {
+    const durNum = entry.duration.match(/[\d.]+/);
+    if (durNum) {
+      const label = parseFloat(durNum[0]) === 1 ? 'minute' : 'minutes';
+      parts.push(`<b>${esc(durNum[0])}</b> ${label}`);
+    } else {
+      parts.push(esc(entry.duration));
+    }
+  }
+
+  if (entry.hr) {
+    parts.push(`<b>${esc(entry.hr)}</b> BPM`);
+  }
+
+  return parts.join(' / ');
 }
 
 // ========== SERVICE WORKER ==========
