@@ -360,6 +360,28 @@
       background: var(--primary-dim);
       color: #fff;
     }
+
+    .type-selector {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .type-btn {
+      flex: 1;
+      background: var(--surface2);
+      border: none;
+      border-radius: 10px;
+      color: var(--text-dim);
+      padding: 12px 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .type-btn.active {
+      background: var(--primary-dim);
+      color: #fff;
+    }
   </style>
 </head>
 <body>
@@ -436,6 +458,7 @@ const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
 const SHORT_DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 let currentWorkout = null;
+let currentEntryType = 'strength';
 let sessionEntries = [];
 let sessionDate = null;
 let liftingExercises = [];
@@ -519,6 +542,7 @@ function saveExercises() {
   save('liftingExercises', liftingExercises);
   renderDashboard();
   closeExercisesModal();
+  if (currentEntryType === 'strength') renderEntryFields();
 }
 
 // ========== START / LOG WORKOUT ==========
@@ -526,6 +550,7 @@ function startWorkout(type) {
   currentWorkout = type;
   sessionEntries = [];
   sessionDate = todayDateStr();
+  currentEntryType = getDefaultEntryType(type);
   switchTab('log-section');
   document.getElementById('log-title').textContent = type;
   document.getElementById('log-subtitle').textContent = 'Log your sets and progress';
@@ -533,135 +558,120 @@ function startWorkout(type) {
   renderSessionEntries();
 }
 
+function getDefaultEntryType(workout) {
+  const map = { 'Run': 'cardio', 'Bike': 'cardio', 'Yoga': 'flexibility', 'Weights': 'strength', 'Stretch': 'flexibility' };
+  return map[workout] || 'strength';
+}
+
 function renderLogForm() {
   const area = document.getElementById('log-form-area');
-  const w = currentWorkout;
   const datePicker = datePickerHTML();
+  const t = currentEntryType;
 
-  if (w === 'Run' || w === 'Bike') {
-    area.innerHTML = `
-      <h3>Log ${w === 'Run' ? 'Run' : 'Ride'}</h3>
-      ${datePicker}
+  area.innerHTML = `
+    <h3>Log Entry</h3>
+    ${datePicker}
+    <div class="type-selector">
+      <button type="button" class="type-btn${t === 'strength' ? ' active' : ''}" onclick="setEntryType('strength')">Strength</button>
+      <button type="button" class="type-btn${t === 'cardio' ? ' active' : ''}" onclick="setEntryType('cardio')">Cardio</button>
+      <button type="button" class="type-btn${t === 'flexibility' ? ' active' : ''}" onclick="setEntryType('flexibility')">Flexibility</button>
+    </div>
+    <div id="entry-fields"></div>
+  `;
+  renderEntryFields();
+}
+
+function setEntryType(type) {
+  currentEntryType = type;
+  document.querySelectorAll('.type-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.trim().toLowerCase() === type);
+  });
+  renderEntryFields();
+}
+
+function renderEntryFields() {
+  const fields = document.getElementById('entry-fields');
+  const t = currentEntryType;
+
+  if (t === 'strength') {
+    let chips = '';
+    if (liftingExercises.length) {
+      chips = `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+        ${liftingExercises.map((e, i) => `<span class="exercise-chip" style="cursor:pointer" onclick="fillExercise(${i})">${esc(e)}</span>`).join('')}
+      </div>`;
+    }
+    fields.innerHTML = `
+      ${chips}
+      <input type="text" id="log-exercise" placeholder="Exercise name">
+      <div class="btn-group">
+        <input type="number" id="log-sets" placeholder="Sets" inputmode="numeric" style="flex:1">
+        <input type="number" id="log-reps" placeholder="Reps" inputmode="numeric" style="flex:1">
+        <input type="number" id="log-weight" placeholder="Weight (lbs)" inputmode="decimal" style="flex:1">
+      </div>
+      <input type="text" id="log-notes" placeholder="Notes (optional)">
+      <button class="btn btn-accent" onclick="addEntry()">Add Entry</button>
+      <button class="btn btn-secondary btn-small" onclick="openExercisesModal()" style="margin-top:4px">${liftingExercises.length ? 'Edit' : 'Add'} Exercises</button>`;
+  } else if (t === 'cardio') {
+    const defaultActivity = ({ 'Run': 'Run', 'Bike': 'Bike' })[currentWorkout] || '';
+    fields.innerHTML = `
+      <input type="text" id="log-activity" placeholder="Activity (e.g. Run, Bike)" value="${esc(defaultActivity)}">
       <input type="text" id="log-distance" placeholder="Distance (e.g. 5 miles)" inputmode="decimal">
       <input type="text" id="log-duration" placeholder="Duration (e.g. 35 min)" inputmode="text">
       <input type="number" id="log-hr" placeholder="Avg heart rate (BPM)" inputmode="numeric">
       <input type="text" id="log-notes" placeholder="Notes (optional)">
-      <button class="btn btn-accent" onclick="addCardioEntry()">Add Entry</button>`;
-  } else if (w === 'Weights') {
-    let html = '';
-    if (liftingExercises.length) {
-      let exerciseOptions = liftingExercises.map(e =>
-        `<div class="routine-option" onclick="selectExerciseForLog('${esc(e)}')" style="padding:14px;margin-bottom:6px">${esc(e)}</div>`
-      ).join('');
-      html = `
-        <h3>Pick Exercise</h3>
-        ${datePicker}
-        ${exerciseOptions}
-        <div style="margin-top:10px">
-          <input type="text" id="log-custom-exercise" placeholder="Or type an exercise">
-        </div>
-        <div id="set-form" style="display:none; margin-top:14px">
-          <div style="font-weight:600;margin-bottom:8px" id="set-exercise-name"></div>
-          <div class="btn-group">
-            <input type="number" id="log-sets" placeholder="Sets" inputmode="numeric" style="flex:1">
-            <input type="number" id="log-reps" placeholder="Reps" inputmode="numeric" style="flex:1">
-            <input type="number" id="log-weight" placeholder="Weight (lbs)" inputmode="decimal" style="flex:1">
-          </div>
-          <input type="text" id="log-set-notes" placeholder="Notes (optional)" style="margin-top:10px">
-          <button class="btn btn-accent" onclick="addLiftEntry()" style="margin-top:6px">Add Set</button>
-        </div>`;
-    } else {
-      html = `
-        <h3>Log Set</h3>
-        ${datePicker}
-        <input type="text" id="log-exercise-name" placeholder="Exercise name">
-        <div class="btn-group">
-          <input type="number" id="log-sets" placeholder="Sets" inputmode="numeric" style="flex:1">
-          <input type="number" id="log-reps" placeholder="Reps" inputmode="numeric" style="flex:1">
-          <input type="number" id="log-weight" placeholder="Weight (lbs)" inputmode="decimal" style="flex:1">
-        </div>
-        <input type="text" id="log-set-notes" placeholder="Notes (optional)">
-        <button class="btn btn-accent" onclick="addGenericEntry()">Add Entry</button>`;
-    }
-    html += `<button class="btn btn-secondary btn-small" onclick="openExercisesModal()" style="margin-top:10px">${liftingExercises.length ? 'Edit' : 'Add'} Exercises</button>`;
-    area.innerHTML = html;
-  } else if (w === 'Yoga' || w === 'Stretch') {
-    area.innerHTML = `
-      <h3>Log ${w}</h3>
-      ${datePicker}
-      <input type="text" id="log-duration" placeholder="Duration (e.g. 30 min)" inputmode="text">
-      <input type="text" id="log-notes" placeholder="Notes (optional)">
-      <button class="btn btn-accent" onclick="addCardioEntry()">Add Entry</button>`;
+      <button class="btn btn-accent" onclick="addEntry()">Add Entry</button>`;
   } else {
-    area.innerHTML = `
-      <h3>Log Activity</h3>
-      ${datePicker}
-      <input type="text" id="log-exercise-name" placeholder="Exercise name">
-      <div class="btn-group">
-        <input type="number" id="log-sets" placeholder="Sets" inputmode="numeric" style="flex:1">
-        <input type="number" id="log-reps" placeholder="Reps" inputmode="numeric" style="flex:1">
-        <input type="number" id="log-weight" placeholder="Weight" inputmode="decimal" style="flex:1">
-      </div>
-      <input type="text" id="log-distance" placeholder="Distance (optional)">
-      <input type="text" id="log-set-notes" placeholder="Notes (optional)">
-      <button class="btn btn-accent" onclick="addGenericEntry()">Add Entry</button>`;
+    fields.innerHTML = `
+      <input type="text" id="log-exercise" placeholder="Exercise (e.g. Hamstring Stretch)">
+      <input type="text" id="log-duration" placeholder="Duration or hold time (e.g. 30 min)" inputmode="text">
+      <input type="text" id="log-notes" placeholder="Notes (optional)">
+      <button class="btn btn-accent" onclick="addEntry()">Add Entry</button>`;
   }
   initClearButtons();
 }
 
-let selectedExercise = '';
-function selectExerciseForLog(name) {
-  selectedExercise = name;
-  document.getElementById('set-form').style.display = 'block';
-  document.getElementById('set-exercise-name').textContent = name;
-  document.getElementById('log-reps').focus();
+function fillExercise(idx) {
+  const el = document.getElementById('log-exercise');
+  if (el && liftingExercises[idx]) {
+    el.value = liftingExercises[idx];
+    el.focus();
+  }
 }
 
-function addCardioEntry() {
-  const distEl = document.getElementById('log-distance');
-  const hrEl = document.getElementById('log-hr');
-  const distance = distEl ? distEl.value.trim() : '';
-  const duration = document.getElementById('log-duration').value.trim();
-  const hr = hrEl ? hrEl.value.trim() : '';
-  const notes = document.getElementById('log-notes').value.trim();
-  if (!distance && !duration) return;
-  sessionEntries.push({ type: 'cardio', distance, duration, hr, notes, time: Date.now() });
-  if (distEl) distEl.value = '';
-  document.getElementById('log-duration').value = '';
-  if (hrEl) hrEl.value = '';
+function addEntry() {
+  const t = currentEntryType;
+  const notes = document.getElementById('log-notes')?.value.trim() || '';
+
+  if (t === 'strength') {
+    const exercise = document.getElementById('log-exercise').value.trim();
+    if (!exercise) return;
+    const sets = document.getElementById('log-sets').value.trim();
+    const reps = document.getElementById('log-reps').value.trim();
+    const weight = document.getElementById('log-weight').value.trim();
+    sessionEntries.push({ type: 'strength', exercise, sets, reps, weight, notes, time: Date.now() });
+    document.getElementById('log-exercise').value = '';
+    document.getElementById('log-sets').value = '';
+    document.getElementById('log-reps').value = '';
+    document.getElementById('log-weight').value = '';
+  } else if (t === 'cardio') {
+    const activity = document.getElementById('log-activity').value.trim();
+    const distance = document.getElementById('log-distance').value.trim();
+    const duration = document.getElementById('log-duration').value.trim();
+    const hr = document.getElementById('log-hr').value.trim();
+    if (!distance && !duration) return;
+    sessionEntries.push({ type: 'cardio', activity, distance, duration, hr, notes, time: Date.now() });
+    document.getElementById('log-distance').value = '';
+    document.getElementById('log-duration').value = '';
+    document.getElementById('log-hr').value = '';
+  } else {
+    const exercise = document.getElementById('log-exercise').value.trim();
+    const duration = document.getElementById('log-duration').value.trim();
+    if (!exercise && !duration) return;
+    sessionEntries.push({ type: 'flexibility', exercise, duration, notes, time: Date.now() });
+    document.getElementById('log-exercise').value = '';
+    document.getElementById('log-duration').value = '';
+  }
   document.getElementById('log-notes').value = '';
-  renderSessionEntries();
-}
-
-function addLiftEntry() {
-  const exercise = selectedExercise || document.getElementById('log-custom-exercise')?.value.trim();
-  const sets = document.getElementById('log-sets').value.trim();
-  const reps = document.getElementById('log-reps').value.trim();
-  const weight = document.getElementById('log-weight').value.trim();
-  const notes = document.getElementById('log-set-notes').value.trim();
-  if (!exercise) return;
-  sessionEntries.push({ type: 'lift', exercise, sets, reps, weight, notes, time: Date.now() });
-  document.getElementById('log-sets').value = '';
-  document.getElementById('log-reps').value = '';
-  document.getElementById('log-weight').value = '';
-  document.getElementById('log-set-notes').value = '';
-  renderSessionEntries();
-}
-
-function addGenericEntry() {
-  const exercise = document.getElementById('log-exercise-name').value.trim();
-  const sets = document.getElementById('log-sets')?.value.trim() || '';
-  const reps = document.getElementById('log-reps').value.trim();
-  const weight = document.getElementById('log-weight').value.trim();
-  const distance = document.getElementById('log-distance')?.value.trim() || '';
-  const notes = document.getElementById('log-set-notes').value.trim();
-  if (!exercise) return;
-  sessionEntries.push({ type: 'generic', exercise, sets, reps, weight, distance, notes, time: Date.now() });
-  if (document.getElementById('log-sets')) document.getElementById('log-sets').value = '';
-  document.getElementById('log-reps').value = '';
-  document.getElementById('log-weight').value = '';
-  if (document.getElementById('log-distance')) document.getElementById('log-distance').value = '';
-  document.getElementById('log-set-notes').value = '';
   renderSessionEntries();
 }
 
@@ -674,8 +684,14 @@ function renderSessionEntries() {
   container.innerHTML = sessionEntries.map((e, i) => {
     let labelHtml = '', metaHtml = '';
     if (e.type === 'cardio') {
-      labelHtml = formatCardioSummary(e, currentWorkout);
+      labelHtml = formatCardioSummary(e, e.activity || currentWorkout);
       metaHtml = e.notes ? esc(e.notes) : '';
+    } else if (e.type === 'flexibility') {
+      labelHtml = esc(e.exercise || 'Flexibility');
+      const flexParts = [];
+      if (e.duration) flexParts.push(e.duration);
+      if (e.notes) flexParts.push(e.notes);
+      metaHtml = esc(flexParts.join(' — '));
     } else {
       labelHtml = esc(e.exercise || '');
       const parts = [];
@@ -754,10 +770,19 @@ function renderHistory() {
       <div id="hist-detail-${wi}" style="display:none;margin-top:10px">
         ${w.entries.map(e => {
           if (e.type === 'cardio') {
-            const summaryHtml = formatCardioSummary(e, w.workout);
+            const summaryHtml = formatCardioSummary(e, e.activity || w.workout);
             return `<div class="log-entry"><div class="details">
               <div class="label">${summaryHtml}</div>
               ${e.notes ? `<div class="meta">${esc(e.notes)}</div>` : ''}
+            </div></div>`;
+          }
+          if (e.type === 'flexibility') {
+            const flexParts = [];
+            if (e.duration) flexParts.push(e.duration);
+            if (e.notes) flexParts.push(e.notes);
+            return `<div class="log-entry"><div class="details">
+              <div class="label">${esc(e.exercise || 'Flexibility')}</div>
+              ${flexParts.length ? `<div class="meta">${esc(flexParts.join(' — '))}</div>` : ''}
             </div></div>`;
           }
           const parts = [];
